@@ -1,20 +1,50 @@
-# Prérequis du projet agentic-orchestrator
+AGENTIC ORCHESTRATOR - PREREQUISITES
+====================================
 
-# --- Outils à installer sur la machine ---
-git 
-dotnet-sdk == 10.0.112      # fixé dans backend/global.json
-nodejs >= 20                # testé avec v24.13.0
-npm                         # fourni avec Node.js
+Tools
+-----
+  git
+  .NET SDK     10.0.112   (pinned in backend/global.json)
+  Node.js      >= 20      (tested with v24.13.0, npm included)
+  Aspire CLI   13.6.1     (matches the AppHost SDK version)
 
-# --- Installation ---
-# sudo apt install git
-# sudo apt install dotnet-sdk-10.0   
-# Node.js : https://nodejs.org
 
-# --- Dépendances du projet (déclarées dans .csproj et package.json) ---
-# cd backend  && dotnet restore
-# cd frontend && npm install
+Installation
+------------
+  sudo apt install git
+  sudo apt install dotnet-sdk-10.0
+  Node.js: https://nodejs.org
 
-# --- Lancement ---
-# cd backend  && dotnet run --project src/Api    -> http://localhost:5205
-# cd frontend && npm run dev                     -> http://localhost:3000
+  Aspire templates and CLI:
+    dotnet new install Aspire.ProjectTemplates
+    curl -sSL https://aspire.dev/install.sh | bash
+    source ~/.bashrc            (or open a new terminal)
+    aspire --version            (should print 13.6.1)
+
+  Local HTTPS certificate (a "partially trusted" warning on Linux is fine):
+    dotnet dev-certs https --trust
+
+  If .NET was installed with snap, the AppHost can't find the runtime:
+    echo 'export DOTNET_ROOT=/var/snap/dotnet/common/dotnet' >> ~/.bashrc
+    source ~/.bashrc
+
+
+Project dependencies
+--------------------
+  cd backend  && dotnet restore
+  cd frontend && npm install
+
+
+Run everything with Aspire
+--------------------------
+  cd backend && aspire run
+
+  Starts the API and the Nuxt frontend, then prints the Aspire dashboard URL
+  (status, logs, traces). Ctrl+C stops everything.
+  Without the CLI: dotnet run --project src/AppHost
+
+
+Run services on their own
+-------------------------
+  cd backend  && dotnet run --project src/Api     ->  http://localhost:5205
+  cd frontend && npm run dev                      ->  http://localhost:3000
