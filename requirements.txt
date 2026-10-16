@@ -1,0 +1,20 @@
+# Prérequis du projet agentic-orchestrator
+
+# --- Outils à installer sur la machine ---
+git 
+dotnet-sdk == 10.0.112      # fixé dans backend/global.json
+nodejs >= 20                # testé avec v24.13.0
+npm                         # fourni avec Node.js
+
+# --- Installation ---
+# sudo apt install git
+# sudo apt install dotnet-sdk-10.0   
+# Node.js : https://nodejs.org
+
+# --- Dépendances du projet (déclarées dans .csproj et package.json) ---
+# cd backend  && dotnet restore
+# cd frontend && npm install
+
+# --- Lancement ---
+# cd backend  && dotnet run --project src/Api    -> http://localhost:5205
+# cd frontend && npm run dev                     -> http://localhost:3000
