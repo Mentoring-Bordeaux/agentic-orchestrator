@@ -2,4 +2,10 @@
   <Folder Name="/src/">
     <Project Path="src/Api/Api.csproj" />
   </Folder>
+  <Folder Name="/src/AppHost/">
+    <Project Path="src/AppHost/AgenticOrchestrator.AppHost.csproj" />
+  </Folder>
+  <Folder Name="/src/ServiceDefaults/">
+    <Project Path="src/ServiceDefaults/AgenticOrchestrator.ServiceDefaults.csproj" />
+  </Folder>
 </Solution>
