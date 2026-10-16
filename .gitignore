@@ -1,0 +1,17 @@
+.env
+.env.*
+!.env.example
+*.pfx
+*.pem
+*.key
+
+.vs/
+.vscode/
+.idea/
+*.user
+*.swp
+
+.DS_Store
+Thumbs.db
+
+.aspire/
