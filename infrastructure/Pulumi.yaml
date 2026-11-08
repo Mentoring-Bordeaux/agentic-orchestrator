@@ -1,0 +1,7 @@
+name: agentic-orchestrator-iac
+description: Pulumi infrastructure for Agentic Orchestrator
+runtime: dotnet
+config:
+  pulumi:tags:
+    value:
+      pulumi:template: azure-csharp
