@@ -37,7 +37,7 @@ jobs:
         with:
           dotnet-version: '10.0.112'
 
-      - name: Pulumi Up (Infrastructure and App)
+      - name: Pulumi Up (Infrastructure and App)  # after ticket : initializing Infrastructure 
         uses: pulumi/actions@v5
         with:
           command: up
