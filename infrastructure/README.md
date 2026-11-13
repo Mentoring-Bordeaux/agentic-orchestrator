@@ -4,14 +4,14 @@ This Pulumi project implements the resources requested by GitHub issue #4:
 
 - an Azure Resource Group;
 - an Azure Static Web App for the Nuxt frontend;
-- an Azure Container Apps environment and Container App for the .NET API;
-- a user-assigned managed identity for pulling the API image from the team's
-  Azure Container Registry (ACR).
+- an Azure Container Apps environment for the .NET API;
+- an Azure Container App for the .NET API.
 
-The Container App is only declared after the image has been published and its
-identity has ACR pull permission. No Azure resources are created by building
-this project. `pulumi up` creates or changes Azure resources and must only be
-run after the team approves the region and spending limit.
+These are the four Azure resources managed by this project. ACR credentials are
+stored as a secret on the Container App, so no separate identity resource is
+created. No Azure resources are created by building this project. `pulumi up`
+creates or changes Azure resources and must only be run after the team approves
+the region and spending limit.
 
 ## Architecture
 
@@ -19,15 +19,17 @@ run after the team approves the region and spending limit.
 flowchart LR
     Browser --> SWA[Azure Static Web Apps\nNuxt web files + server function]
     SWA -->|HTTPS /api/hello| API[Azure Container App\n.NET API, port 8080]
-    ACR[Team Azure Container Registry] -->|image pull using managed identity| API
+    ACR[Team Azure Container Registry] -->|image pull using secret credentials| API
     RG[Azure Resource Group] -. contains .-> SWA
     RG -. contains .-> API
     RG -. contains .-> Environment[Container Apps environment]
 ```
 
 The team's ACR is external to this Pulumi project; its name and credentials are
-not stored in the repository. The frontend's Nuxt server route reads the API
-base URL from `NUXT_BACKEND_API_BASE` at runtime.
+not stored in the repository. Pulumi encrypts `registryPassword` in stack
+configuration, and the Container App keeps it as a registry secret. Use a
+dedicated ACR credential with pull-only permission. The frontend's Nuxt server
+route reads the API base URL from `NUXT_BACKEND_API_BASE` at runtime.
 
 Static Web Apps distributes the web files globally. Its `Location` selects the
 region for the managed Functions API, so confirm that the proposed region is
@@ -53,40 +55,17 @@ pulumi config set projectPrefix agentic-orchestrator-dev
 pulumi config set frontendName "agentic-orchestrator-dev-<unique-suffix>"
 ```
 
-`francecentral` is the proposed backend region and still needs team approval
-before deployment. The frontend Functions region defaults to the same value;
-set `frontendLocation` if the Azure portal does not offer that region for Static
-Web Apps. The project prefix should be lowercase and short enough for Azure
-resource names. The Static Web App name must be globally unique. Optional values:
-
-```powershell
-pulumi config set resourceGroupName "agentic-orchestrator-dev-rg"
-pulumi config set frontendSku Free
-pulumi config set frontendLocation "<region-shown-for-Static-Web-Apps>"
-```
-
-The Static Web App defaults to the Free SKU. Do not configure `backendImage` yet:
-the first approved Pulumi deployment creates the image-pull identity needed for
-the administrator to grant ACR access.
+`francecentral` is the proposed region for both the backend and Static Web Apps;
+confirm that it is available for both before deployment. The project prefix
+should be lowercase and short enough for Azure resource names. The Resource
+Group name is derived from the prefix (`<projectPrefix>-rg`), and the Static Web
+App name must be globally unique. The Static Web App uses the Free SKU.
 
 ## Backend image and ACR access
 
-The first approved Pulumi deployment, with no `backendImage` setting, creates
-the Resource Group, Static Web App, Container Apps environment, and user-assigned
-image-pull identity. Pulumi prints the identity's principal ID as
-`imagePullIdentityPrincipalId`. An Azure administrator must grant that identity
-`AcrPull` on the team's ACR before the Container App is created. The
-administrator also needs to provide the ACR resource ID and login server. The
-identity is configured for image pulls and not exposed to the running API
-container. The role assignment command is:
-
-```powershell
-az role assignment create --assignee-object-id "<identity-principal-id>" --assignee-principal-type ServicePrincipal --role AcrPull --scope "<acr-resource-id>"
-```
-
-The person or pipeline that publishes the image needs the separate `AcrPush`
-permission. Once it is granted, from the `backend` directory build and publish
-the Linux image:
+The person or pipeline that publishes the image needs `AcrPush`. The Container
+App needs a separate credential with pull-only access. Once these are available,
+from the `backend` directory build and publish the Linux image:
 
 ```powershell
 $registry = "<registry-name>" # replace with the ACR name supplied by the team
@@ -96,12 +75,15 @@ az acr login --name $registry
 docker push $image
 ```
 
-Then configure Pulumi with the ACR login server and the full published image
-name (these are identifiers, not passwords):
+Then configure Pulumi with the ACR login server, the full published image name,
+and the pull credential. Set the password as a Pulumi secret so it is encrypted
+in the stack configuration:
 
 ```powershell
 pulumi config set registryServer "$registry.azurecr.io"
 pulumi config set backendImage $image
+pulumi config set registryUsername "<pull-credential-username>"
+pulumi config set --secret registryPassword "<pull-credential-password>"
 ```
 
 ## Preview and deployment
@@ -112,12 +94,12 @@ Review the planned resources first:
 pulumi preview
 ```
 
-Run `pulumi preview` before each deployment. After the first deployment,
-administrator permission grant, and image push described above, the second
-preview includes the backend Container App. Only run `pulumi up` after the team
-explicitly approves the region and cost estimate. These Azure resources may
-incur charges; Container Apps usage can be billed, and the Visual Studio
-subscription's current `$0.00` cost is not a monthly spending limit.
+Run `pulumi preview` before deployment. With the image published and the four
+configuration values set, the preview should show the four resources listed
+above. Only run `pulumi up` after the team explicitly approves the region and
+cost estimate. These Azure resources may incur charges; Container Apps usage
+can be billed, and the Visual Studio subscription's current `$0.00` cost is not
+a monthly spending limit.
 
 To remove resources, review `pulumi destroy` with the team first. Do not use it
 if the stack contains resources that should be retained.
@@ -166,6 +148,6 @@ resources, so deployment automation remains separate work.
 - Docker image build and push have not been performed. Docker Engine was
   unavailable in the local environment, and no registry image exists yet.
 - `pulumi preview` and Azure deployment have not been performed. Team approval
-  for France Central, a monthly spending limit, Azure sign-in, the ACR login
-  server/resource ID, `AcrPull` assignment, and a published image are still
-  required. No Azure resources have been created.
+  for France Central and a spending limit, Azure sign-in, ACR pull credentials,
+  and a published image are still required. No Azure resources have been
+  created.
