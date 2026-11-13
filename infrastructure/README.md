@@ -21,8 +21,18 @@ Container Apps can pull and run the image.
 ## Pulumi settings
 
 The program requires a team-approved Azure region in the Pulumi stack setting
-named `location`. Do not use an assumed default region. The current program has
-not deployed anything to Azure.
+named `location` and a published backend image reference in `backendImage`. For
+example, after the image has been pushed to a registry:
+
+```powershell
+pulumi config set location <team-approved-region>
+pulumi config set backendImage <registry>/<repository>:<tag>
+```
+
+Do not use an assumed default region or a local-only Docker tag: Azure must be
+able to pull the image from the configured registry. The current program has not
+deployed anything to Azure. Private registry credentials or managed identity
+permissions still need to be configured before the backend can start.
 
 Before any deployment, review the Pulumi preview with the team and confirm the
 subscription, spending limit, Nuxt 4 deployment mode, registry, and permissions
