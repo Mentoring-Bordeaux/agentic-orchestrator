@@ -13,9 +13,6 @@ return await Pulumi.Deployment.RunAsync(() =>
     var projectPrefix = config.Require("projectPrefix");
     var frontendName = config.Require("frontendName");
     var backendImage = config.Require("backendImage");
-    var registryServer = config.Require("registryServer");
-    var registryUsername = config.Require("registryUsername");
-    var registryPassword = config.RequireSecret("registryPassword");
 
     var resourceGroup = new ResourceGroup($"{projectPrefix}-rg", new ResourceGroupArgs
     {
@@ -50,23 +47,6 @@ return await Pulumi.Deployment.RunAsync(() =>
         EnvironmentId = backendEnvironment.Id,
         Configuration = new ConfigurationArgs
         {
-            Secrets =
-            {
-                new SecretArgs
-                {
-                    Name = "acr-password",
-                    Value = registryPassword
-                }
-            },
-            Registries =
-            {
-                new RegistryCredentialsArgs
-                {
-                    Server = registryServer,
-                    Username = registryUsername,
-                    PasswordSecretRef = "acr-password"
-                }
-            },
             Ingress = new IngressArgs
             {
                 External = true,

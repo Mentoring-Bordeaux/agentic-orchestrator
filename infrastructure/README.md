@@ -7,11 +7,11 @@ This Pulumi project implements the resources requested by GitHub issue #4:
 - an Azure Container Apps environment for the .NET API;
 - an Azure Container App for the .NET API.
 
-These are the four Azure resources managed by this project. ACR credentials are
-stored as a secret on the Container App, so no separate identity resource is
-created. No Azure resources are created by building this project. `pulumi up`
-creates or changes Azure resources and must only be run after the team approves
-the region and spending limit.
+These are the four Azure resources managed by this project. The backend image is
+pulled from a public Docker Hub repository, so no registry credential or extra
+identity resource is needed. No Azure resources are created by building this
+project. `pulumi up` creates or changes Azure resources and must only be run
+after the team approves the region and spending limit.
 
 ## Architecture
 
@@ -19,17 +19,15 @@ the region and spending limit.
 flowchart LR
     Browser --> SWA[Azure Static Web Apps\nNuxt web files + server function]
     SWA -->|HTTPS /api/hello| API[Azure Container App\n.NET API, port 8080]
-    ACR[Team Azure Container Registry] -->|image pull using secret credentials| API
+    DockerHub[Public Docker Hub image] -->|image pull| API
     RG[Azure Resource Group] -. contains .-> SWA
     RG -. contains .-> API
     RG -. contains .-> Environment[Container Apps environment]
 ```
 
-The team's ACR is external to this Pulumi project; its name and credentials are
-not stored in the repository. Pulumi encrypts `registryPassword` in stack
-configuration, and the Container App keeps it as a registry secret. Use a
-dedicated ACR credential with pull-only permission. The frontend's Nuxt server
-route reads the API base URL from `NUXT_BACKEND_API_BASE` at runtime.
+The Docker Hub repository must be public for Azure to pull the image without
+credentials. The frontend's Nuxt server route reads the API base URL from
+`NUXT_BACKEND_API_BASE` at runtime.
 
 Static Web Apps distributes the web files globally. Its `Location` selects the
 region for the managed Functions API, so confirm that the proposed region is
@@ -61,30 +59,28 @@ should be lowercase and short enough for Azure resource names. The Resource
 Group name is derived from the prefix (`<projectPrefix>-rg`), and the Static Web
 App name must be globally unique. The Static Web App uses the Free SKU.
 
-## Backend image and ACR access
+## Backend image on Docker Hub
 
-The person or pipeline that publishes the image needs `AcrPush`. The Container
-App needs a separate credential with pull-only access. Once these are available,
-from the `backend` directory build and publish the Linux image:
+Create a Docker Hub repository and make its visibility public. From the
+`backend` directory, build and publish the Linux image:
 
 ```powershell
-$registry = "<registry-name>" # replace with the ACR name supplied by the team
-$image = "$registry.azurecr.io/agentic-orchestrator-api:dev"
+$dockerHubUser = "<docker-hub-username>"
+$image = "docker.io/$dockerHubUser/agentic-orchestrator-api:dev"
 docker build --platform linux/amd64 -f src/Api/Dockerfile -t $image .
-az acr login --name $registry
+docker login --username $dockerHubUser
 docker push $image
 ```
 
-Then configure Pulumi with the ACR login server, the full published image name,
-and the pull credential. Set the password as a Pulumi secret so it is encrypted
-in the stack configuration:
+Configure Pulumi with the full public image name:
 
 ```powershell
-pulumi config set registryServer "$registry.azurecr.io"
 pulumi config set backendImage $image
-pulumi config set registryUsername "<pull-credential-username>"
-pulumi config set --secret registryPassword "<pull-credential-password>"
 ```
+
+Docker Hub applies pull limits, so this is best suited to a demo or low-volume
+deployment. Anyone can download a public image; do not include secrets in the
+image.
 
 ## Preview and deployment
 
@@ -94,8 +90,8 @@ Review the planned resources first:
 pulumi preview
 ```
 
-Run `pulumi preview` before deployment. With the image published and the four
-configuration values set, the preview should show the four resources listed
+Run `pulumi preview` before deployment. With the public image published and
+`backendImage` configured, the preview should show the four resources listed
 above. Only run `pulumi up` after the team explicitly approves the region and
 cost estimate. These Azure resources may incur charges; Container Apps usage
 can be billed, and the Visual Studio subscription's current `$0.00` cost is not
@@ -145,9 +141,10 @@ resources, so deployment automation remains separate work.
   local or CI builds.
 - npm reported 15 dependency vulnerabilities (3 low, 11 moderate, 1 high). They
   were not automatically changed; review `npm audit` separately.
-- Docker image build and push have not been performed. Docker Engine was
-  unavailable in the local environment, and no registry image exists yet.
+- Docker image build and push to the public Docker Hub repository have not been
+  performed. Docker Engine was unavailable in the local environment, and no
+  public image exists yet.
 - `pulumi preview` and Azure deployment have not been performed. Team approval
-  for France Central and a spending limit, Azure sign-in, ACR pull credentials,
-  and a published image are still required. No Azure resources have been
+  for France Central and a spending limit, Azure sign-in, and a published public
+  image are still required. No Azure resources have been
   created.
