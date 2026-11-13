@@ -1,0 +1,19 @@
+:root {
+  --color-primary: #ff5800;
+  --color-text: #333333;
+  --color-border: #e5e5e5;
+  --color-bg: #ffffff;
+  --max-width: 900px;
+}
+
+body {
+  font-family: system-ui, sans-serif;
+  color: var(--color-text);
+  background: var(--color-bg);
+}
+
+.container {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
