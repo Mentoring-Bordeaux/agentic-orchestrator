@@ -4,10 +4,11 @@ on:
   pull_request:
     branches:
       - main
-  push:
-    branches:
-      - main
   workflow_dispatch:
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  NODE_VERSION: '22.x'
 
 permissions:
   contents: read
@@ -18,7 +19,7 @@ concurrency:
 
 jobs:
   backend:
-    name: Backend (.NET) - build & test
+    name: Backend (.NET) - Build & Test
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -28,10 +29,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup .NET (version from backend/global.json)
+      - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          global-json-file: backend/global.json
+          dotnet-version: ${{ env.DOTNET_VERSION }}
 
       - name: Restore
         run: dotnet restore AgenticOrchestrator.slnx
@@ -39,11 +40,23 @@ jobs:
       - name: Build
         run: dotnet build AgenticOrchestrator.slnx --configuration Release --no-restore
 
-      - name: Test
+      - name: Test (Pull Requests only)
+        if: github.event_name == 'pull_request'
         run: dotnet test AgenticOrchestrator.slnx --configuration Release --no-build --verbosity normal
 
+      - name: Publish Backend Release
+        if: github.event_name == 'workflow_dispatch'
+        run: dotnet publish AgenticOrchestrator.slnx --configuration Release --no-build --output ./publish
+
+      - name: Upload Backend Artifact
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-release
+          path: backend/publish
+
   frontend:
-    name: Frontend (Nuxt) - build
+    name: Frontend (Nuxt) - Build
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -56,12 +69,19 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: ${{ env.NODE_VERSION }}
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
-        run: npm ci   # also runs "nuxt prepare" via postinstall
+        run: npm ci
 
       - name: Build
         run: npm run build
+
+      - name: Upload Frontend Artifact
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-release
+          path: frontend/.output
