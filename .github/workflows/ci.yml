@@ -12,6 +12,7 @@ env:
 
 permissions:
   contents: read
+  id-token: write
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -19,7 +20,7 @@ concurrency:
 
 jobs:
   backend:
-    name: Backend (.NET) - Build & Test
+    name: Backend (.NET) - Build, Test & Push Image
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -44,19 +45,26 @@ jobs:
         if: github.event_name == 'pull_request'
         run: dotnet test AgenticOrchestrator.slnx --configuration Release --no-build --verbosity normal
 
-      - name: Publish Backend Release
+      - name: Azure Login with OIDC
         if: github.event_name == 'workflow_dispatch'
-        run: dotnet publish AgenticOrchestrator.slnx --configuration Release --no-build --output ./publish
-
-      - name: Upload Backend Artifact
-        if: github.event_name == 'workflow_dispatch'
-        uses: actions/upload-artifact@v4
+        uses: azure/login@v2
         with:
-          name: backend-release
-          path: backend/publish
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Build and Push Backend Image to ACR
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          az acr login --name ${{ vars.AZURE_ACR_NAME }}
+          docker build \
+            -t ${{ vars.AZURE_ACR_NAME }}.azurecr.io/backend:${{ github.run_id }} \
+            -t ${{ vars.AZURE_ACR_NAME }}.azurecr.io/backend:latest .
+          docker push ${{ vars.AZURE_ACR_NAME }}.azurecr.io/backend:${{ github.run_id }}
+          docker push ${{ vars.AZURE_ACR_NAME }}.azurecr.io/backend:latest
 
   frontend:
-    name: Frontend (Nuxt) - Build
+    name: Frontend (Nuxt) - Build & Push Image
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -79,9 +87,20 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Upload Frontend Artifact
+      - name: Azure Login with OIDC
         if: github.event_name == 'workflow_dispatch'
-        uses: actions/upload-artifact@v4
+        uses: azure/login@v2
         with:
-          name: frontend-release
-          path: frontend/.output
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Build and Push Frontend Image to ACR
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          az acr login --name ${{ vars.AZURE_ACR_NAME }}
+          docker build \
+            -t ${{ vars.AZURE_ACR_NAME }}.azurecr.io/frontend:${{ github.run_id }} \
+            -t ${{ vars.AZURE_ACR_NAME }}.azurecr.io/frontend:latest .
+          docker push ${{ vars.AZURE_ACR_NAME }}.azurecr.io/frontend:${{ github.run_id }}
+          docker push ${{ vars.AZURE_ACR_NAME }}.azurecr.io/frontend:latest

@@ -1,0 +1,43 @@
+name: Continuous Deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'ACR image tag to deploy (CI Run ID or latest)'
+        required: true
+        default: 'latest'
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy-application:
+    name: Deploy Containers to Azure Container Apps
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Azure Login with OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy Backend Container App
+        uses: azure/container-apps-deploy-action@v2
+        with:
+          acrName: ${{ vars.AZURE_ACR_NAME }}
+          containerAppName: ${{ vars.AZURE_BACKEND_CONTAINER_APP }}
+          resourceGroup: ${{ vars.AZURE_RESOURCE_GROUP }}
+          imageToDeploy: ${{ vars.AZURE_ACR_NAME }}.azurecr.io/backend:${{ inputs.release_tag }}
+
+      - name: Deploy Frontend Container App
+        uses: azure/container-apps-deploy-action@v2
+        with:
+          acrName: ${{ vars.AZURE_ACR_NAME }}
+          containerAppName: ${{ vars.AZURE_FRONTEND_CONTAINER_APP }}
+          resourceGroup: ${{ vars.AZURE_RESOURCE_GROUP }}
+          imageToDeploy: ${{ vars.AZURE_ACR_NAME }}.azurecr.io/frontend:${{ inputs.release_tag }}
