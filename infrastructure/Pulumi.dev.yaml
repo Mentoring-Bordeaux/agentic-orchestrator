@@ -1,5 +1,6 @@
 config:
-  agentic-orchestrator-iac:location: francecentral
+  agentic-orchestrator-iac:location: westeurope
+  agentic-orchestrator-iac:frontendLocation: westeurope
   agentic-orchestrator-iac:projectPrefix: agentic-orchestrator-dev
   agentic-orchestrator-iac:frontendName: agentic-orchestrator-dev-ibtihelmanaa-7f3a91
   agentic-orchestrator-iac:backendImage: docker.io/ibtihelmanaa/agentic-orchestrator-api:dev

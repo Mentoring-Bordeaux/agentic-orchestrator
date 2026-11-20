@@ -92,12 +92,28 @@ Depuis ce dossier, `pulumi config` affiche les valeurs actuelles :
 
 | Clé | Valeur actuelle | Utilisation |
 |---|---|---|
-| `location` | `francecentral` | Région Azure prévue. |
+| `location` | `francecentral` | Région du groupe de ressources et de toutes les ressources prévues, y compris la Static Web App. |
 | `projectPrefix` | `agentic-orchestrator-dev` | Préfixe de nommage pour les ressources. |
 | `frontendName` | `agentic-orchestrator-dev-ibtihelmanaa-7f3a91` | Nom globalement unique de la Static Web App. |
 | `registryName` | `agenticorchestratoribtihelmanaa7f3a91` | Nom ACR ; Azure a confirmé qu'il est disponible. |
 | `backendImage` | `docker.io/ibtihelmanaa/agentic-orchestrator-api:dev` | Image utilisée au premier déploiement. |
 | `azure-native:subscriptionId` | `5e5527ec-a980-4611-895e-258a6bdf75e3` | Souscription Visual Studio Professional ciblée. |
+
+### Décisions confirmées par le chef de projet
+
+- `francecentral` convient pour le backend. Azure a refusé la création de la
+  Static Web App dans cette région car elle n'est pas disponible pour
+  `Microsoft.Web/staticSites`.
+- Le plafond annoncé est de **50 €** pour l'unique environnement prévu. Le
+  destinataire des alertes de dépenses reste à préciser.
+- L'équipe peut créer son propre ACR ; le registre configuré ci-dessus est donc
+  cohérent avec cette décision.
+- La licence Visual Studio Professional ne donne pas automatiquement les droits
+  Azure : la possibilité de créer les ressources dépend du rôle attribué au
+  compte dans la souscription.
+- Le chef de projet n'a pas précisé séparément la région des fonctions API de
+  Static Web Apps. La configuration actuelle utilise `francecentral`, mais
+  Azure a refusé cette région pour ce type de ressource.
 
 `Pulumi.dev.yaml` contient les paramètres de la stack, pas le programme C#.
 `pulumi config set` modifie ces paramètres. Le fichier doit être ajouté, commité
@@ -213,13 +229,15 @@ cette branche ; cette automatisation reste une étape séparée.
 
 - `dotnet build .\agentic-orchestrator-iac.csproj --no-restore` réussit avec
   deux avertissements `NU1902` sur des dépendances OpenTelemetry et zéro erreur.
-- Le preview Pulumi actuel réussit et prévoit sept ressources Azure. Il n'a pas
-  créé de ressource.
+- Le premier `pulumi up` a échoué sur la région de la Static Web App. Il a
+  néanmoins créé le groupe de ressources, l'environnement Container Apps,
+  l'identité managée et l'ACR. La Static Web App a échoué ; l'affectation
+  `AcrPull` et la Container App backend ne figurent pas comme créées.
 - L'image Docker Hub et le backend local ont été testés. L'image n'a pas encore
   été importée dans ACR.
-- **Aucune ressource Azure n'a été créée.** Le premier `pulumi up` attend
-  l'approbation de `francecentral` et du budget mis à jour, qui doit inclure ACR
-  Basic et Container Apps.
+- Le plafond annoncé par le chef de projet est de 50 €, mais aucun budget Azure
+  ni destinataire d'alerte n'est configuré. Vérifiez les coûts des ressources
+  déjà créées et le rôle Azure du compte avant de relancer `pulumi up`.
 - La Static Web App n'a pas encore reçu les fichiers frontend.
 
 Pour supprimer des ressources, `pulumi destroy` est une opération destructive :
