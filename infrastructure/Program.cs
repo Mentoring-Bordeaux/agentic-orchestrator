@@ -12,15 +12,18 @@ return await Pulumi.Deployment.RunAsync(() =>
 {
     var config = new Config();
     var location = config.Require("location");
+    var frontendLocation = config.Get("frontendLocation") ?? location;
     var projectPrefix = config.Require("projectPrefix");
     var frontendName = config.Require("frontendName");
     var backendImage = config.Require("backendImage");
     var registryName = config.Require("registryName");
     var subscriptionId = new Config("azure-native").Require("subscriptionId");
 
-    var resourceGroup = new ResourceGroup($"{projectPrefix}-rg", new ResourceGroupArgs
+    var resourceGroupName = $"{projectPrefix}-rg";
+    var resourceGroup = new ResourceGroup(resourceGroupName, new ResourceGroupArgs
     {
-        Location = location
+        Location = location,
+        ResourceGroupName = resourceGroupName
     });
 
     var registry = new Pulumi.AzureNative.ContainerRegistry.Registry("backend-registry", new Pulumi.AzureNative.ContainerRegistry.RegistryArgs
@@ -57,7 +60,8 @@ return await Pulumi.Deployment.RunAsync(() =>
     {
         Name = frontendName,
         ResourceGroupName = resourceGroup.Name,
-        Location = location,
+        Location = frontendLocation,
+        RepositoryUrl = "",
         Sku = new SkuDescriptionArgs
         {
             Name = "Free",

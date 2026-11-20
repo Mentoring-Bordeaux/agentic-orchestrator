@@ -83,6 +83,20 @@ Pulumi prévoit sept ressources Azure :
 7. **Affectation du rôle `AcrPull`** : donne à cette identité le droit de lire
    les images dans cet ACR, sans lui donner le droit d'en publier.
 
+Les noms Azure sont explicites : le groupe de ressources utilise
+`${projectPrefix}-rg`, et les autres ressources utilisent leurs noms définis
+dans le programme ou dans la configuration. Pulumi n'ajoute pas de suffixe
+aléatoire à ces noms. Les valeurs `frontendName` et `registryName` doivent
+rester disponibles dans Azure.
+
+Si un groupe de ressources existant porte un nom généré par Pulumi, ou si le
+nom d'une Static Web App existante change, Pulumi peut remplacer ces ressources.
+Le remplacement du groupe peut aussi remplacer ou supprimer les ressources
+qu'il contient, avec un risque de perte de données. Celui de la Static Web App
+peut modifier son URL et nécessiter une nouvelle publication. Vérifiez l'état
+réel, les collisions de noms et le résultat de `pulumi preview` avant tout
+`pulumi up`, et prévoyez les sauvegardes et migrations nécessaires.
+
 Le total `8 to create` dans le dernier preview comprend ces sept ressources
 Azure et l'enregistrement de la stack Pulumi elle-même.
 
@@ -92,9 +106,10 @@ Depuis ce dossier, `pulumi config` affiche les valeurs actuelles :
 
 | Clé | Valeur actuelle | Utilisation |
 |---|---|---|
-| `location` | `francecentral` | Région du groupe de ressources et de toutes les ressources prévues, y compris la Static Web App. |
+| `location` | `centralus` | Région du groupe de ressources, du backend et du registre. |
+| `frontendLocation` | `centralus` | Région de la Static Web App, qui peut différer de celle du backend. |
 | `projectPrefix` | `agentic-orchestrator-dev` | Préfixe de nommage pour les ressources. |
-| `frontendName` | `agentic-orchestrator-dev-ibtihelmanaa-7f3a91` | Nom globalement unique de la Static Web App. |
+| `frontendName` | `agentic-orchestrator-dev-ibtihelmanaa` | Nom globalement unique de la Static Web App. |
 | `registryName` | `agenticorchestratoribtihelmanaa7f3a91` | Nom ACR ; Azure a confirmé qu'il est disponible. |
 | `backendImage` | `docker.io/ibtihelmanaa/agentic-orchestrator-api:dev` | Image utilisée au premier déploiement. |
 | `azure-native:subscriptionId` | `5e5527ec-a980-4611-895e-258a6bdf75e3` | Souscription Visual Studio Professional ciblée. |
@@ -112,8 +127,8 @@ Depuis ce dossier, `pulumi config` affiche les valeurs actuelles :
   Azure : la possibilité de créer les ressources dépend du rôle attribué au
   compte dans la souscription.
 - Le chef de projet n'a pas précisé séparément la région des fonctions API de
-  Static Web Apps. La configuration actuelle utilise `francecentral`, mais
-  Azure a refusé cette région pour ce type de ressource.
+  Static Web Apps. La configuration actuelle utilise `centralus` pour la
+  Static Web App, une région acceptée par le fournisseur de ressources.
 
 `Pulumi.dev.yaml` contient les paramètres de la stack, pas le programme C#.
 `pulumi config set` modifie ces paramètres. Le fichier doit être ajouté, commité
@@ -209,10 +224,15 @@ par le compte humain Azure.
 ## Frontend
 
 Pulumi crée la ressource Static Web App, mais ne publie pas encore les fichiers
-Nuxt. Le frontend utilise Nitro avec le preset `azure_swa`; sa route serveur
-`frontend/server/api/hello.get.ts` appelle le backend. Après création et
+Nuxt. Le site est créé sans dépôt lié (`RepositoryUrl` vide) ; son déploiement
+reste une étape séparée. Le frontend utilise Nitro avec le preset `azure_swa` ;
+sa route serveur `frontend/server/api/hello.get.ts` appelle le backend. Après création et
 déploiement du site, configurez `NUXT_BACKEND_API_BASE` dans les paramètres de
 l'application avec la sortie `backendUrl` de Pulumi.
+
+Le nom de la ressource ne détermine pas l'URL par défaut : Azure génère le
+domaine `*.azurestaticapps.net`. Un domaine personnalisé permet de choisir
+l'adresse publique.
 
 Les emplacements de build attendus par le workflow Static Web Apps sont :
 
@@ -229,10 +249,11 @@ cette branche ; cette automatisation reste une étape séparée.
 
 - `dotnet build .\agentic-orchestrator-iac.csproj --no-restore` réussit avec
   deux avertissements `NU1902` sur des dépendances OpenTelemetry et zéro erreur.
-- Le premier `pulumi up` a échoué sur la région de la Static Web App. Il a
-  néanmoins créé le groupe de ressources, l'environnement Container Apps,
-  l'identité managée et l'ACR. La Static Web App a échoué ; l'affectation
-  `AcrPull` et la Container App backend ne figurent pas comme créées.
+- Un `pulumi up` a échoué sur la région de la Static Web App ; une tentative
+  ultérieure a échoué sur une requête vide pour cette ressource. La stack
+  contient plusieurs remplacements de groupes de ressources en attente et
+  l'état Pulumi ne correspond pas nécessairement aux ressources Azure actuelles.
+  Vérifiez les ressources et le plan avant toute suppression ou mise à jour.
 - L'image Docker Hub et le backend local ont été testés. L'image n'a pas encore
   été importée dans ACR.
 - Le plafond annoncé par le chef de projet est de 50 €, mais aucun budget Azure
