@@ -3,3 +3,5 @@ config:
   agentic-orchestrator-iac:projectPrefix: agentic-orchestrator-dev
   agentic-orchestrator-iac:frontendName: agentic-orchestrator-dev-ibtihelmanaa-7f3a91
   agentic-orchestrator-iac:backendImage: docker.io/ibtihelmanaa/agentic-orchestrator-api:dev
+  agentic-orchestrator-iac:registryName: agenticorchestratoribtihelmanaa7f3a91
+  azure-native:subscriptionId: 5e5527ec-a980-4611-895e-258a6bdf75e3
