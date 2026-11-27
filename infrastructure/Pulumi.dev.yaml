@@ -1,0 +1,8 @@
+config:
+  agentic-orchestrator-iac:location: centralus
+  agentic-orchestrator-iac:frontendLocation: centralus
+  agentic-orchestrator-iac:projectPrefix: agentic-orchestrator-dev
+  agentic-orchestrator-iac:frontendName: agentic-orchestrator-dev
+  agentic-orchestrator-iac:backendImage: agenticorchestratordevregistry.azurecr.io/agentic-orchestrator-api:dev
+  agentic-orchestrator-iac:registryName: agenticorchestratordevregistry
+  azure-native:subscriptionId: 5e5527ec-a980-4611-895e-258a6bdf75e3
